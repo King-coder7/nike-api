@@ -7,11 +7,13 @@
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; max-width: 800px; margin: auto; }
         .shoe-card { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .price { color: green; font-weight: bold; }
+        .price { color: green; font-weight: bold; font-size: 1.1em; }
         .form-container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         input[type="text"], input[type="number"] { width: 100%; padding: 8px; margin: 5px 0 15px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { background-color: #000; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
         button:hover { background-color: #333; }
+        .delete-btn { background-color: #dc3545; margin-top: 10px; width: auto; padding: 8px 12px; font-size: 14px; }
+        .delete-btn:hover { background-color: #c82333; }
     </style>
 </head>
 <body>
@@ -43,11 +45,11 @@
     <div id="shoe-container">Loading shoes...</div>
 
     <script>
-        // 1. YOUR RENDER URL GOES HERE (Don't forget to keep /inventory at the end!)
-        // REPLACE THE URL BELOW
+        // --- 1. SET YOUR API URL ---
+        // REPLACE 'YOUR_RENDER_URL' WITH YOUR ACTUAL RENDER LINK
         const apiUrl = "https://nike-api-wkz4.onrender.com/inventory";
 
-        // Function to fetch and display shoes (GET)
+        // --- 2. GET: FETCH & DISPLAY SHOES ---
         function loadShoes() {
             fetch(apiUrl)
                 .then(response => response.json())
@@ -67,6 +69,7 @@
                                 <h2>${shoe.brand.toUpperCase()} ${shoe.model}</h2>
                                 <p class="price">$${shoe.price}</p>
                                 <p>${status}</p>
+                                <button class="delete-btn" onclick="deleteShoe(${shoe.id})">🗑️ Delete Shoe</button>
                             </div>
                         `;
                     });
@@ -77,11 +80,10 @@
                 });
         }
 
-        // Function to handle form submission (POST)
+        // --- 3. POST: ADD A NEW SHOE ---
         document.getElementById("shoe-form").addEventListener("submit", function(event) {
-            event.preventDefault(); // Stop the page from refreshing when you click submit
+            event.preventDefault(); 
 
-            // Gather the data from our form inputs
             const newShoe = {
                 brand: document.getElementById("brand").value,
                 model: document.getElementById("model").value,
@@ -89,26 +91,34 @@
                 in_stock: document.getElementById("in_stock").checked
             };
 
-            // Send the POST request to the cloud. 
-            // Notice we wrap 'newShoe' in an array [] because our Python API expects a List!
             fetch(apiUrl, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify([newShoe]) 
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify([newShoe]) // Sending as an array to match the Python backend
             })
             .then(response => response.json())
             .then(data => {
-                alert("Success! " + data.message); // Show a popup confirming it worked
-                document.getElementById("shoe-form").reset(); // Clear the form
-                loadShoes(); // Refresh the visual list automatically to show the new shoe!
+                alert("Success! " + data.message); 
+                document.getElementById("shoe-form").reset(); 
+                loadShoes(); 
             })
-            .catch(error => {
-                alert("Error adding shoe! Check console.");
-                console.error("Error posting shoe:", error);
-            });
+            .catch(error => console.error("Error posting shoe:", error));
         });
+
+        // --- 4. DELETE: REMOVE A SHOE ---
+        function deleteShoe(id) {
+            if (!confirm("Are you sure you want to delete this shoe?")) return;
+
+            fetch(`${apiUrl}/${id}`, {
+                method: "DELETE"
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadShoes(); // Refresh the list to remove the deleted shoe
+            })
+            .catch(error => console.error("Error deleting shoe:", error));
+        }
 
         // Load the shoes immediately when the page first opens
         loadShoes();

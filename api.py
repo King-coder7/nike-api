@@ -47,24 +47,23 @@ def home():
 
 @app.get("/inventory")
 def get_inventory():
-    # Read all shoes from the database
-    cursor.execute("SELECT brand, model, price, in_stock FROM inventory")
+    # 1. Update: We are now asking the database for the 'id' column as well!
+    cursor.execute("SELECT id, brand, model, price, in_stock FROM inventory")
     rows = cursor.fetchall()
     
-    # Format them into a clean list
     inventory_list = []
     for row in rows:
         inventory_list.append({
-            "brand": row[0], 
-            "model": row[1], 
-            "price": row[2], 
-            "in_stock": bool(row[3])
+            "id": row[0],         # <-- Added the ID
+            "brand": row[1], 
+            "model": row[2], 
+            "price": row[3], 
+            "in_stock": bool(row[4])
         })
     return inventory_list
 
 @app.post("/inventory")
 def add_shoes(new_shoes: List[Shoe]):
-    # Save new shoes to the database permanently
     for shoe in new_shoes:
         cursor.execute(
             "INSERT INTO inventory (brand, model, price, in_stock) VALUES (?, ?, ?, ?)",
@@ -72,3 +71,11 @@ def add_shoes(new_shoes: List[Shoe]):
         )
     conn.commit()
     return {"message": f"Success! Saved {len(new_shoes)} shoes to the database permanently."}
+
+# 2. NEW: The Delete Route!
+@app.delete("/inventory/{shoe_id}")
+def delete_shoe(shoe_id: int):
+    # This tells SQLite to find the shoe with that exact ID and wipe it out
+    cursor.execute("DELETE FROM inventory WHERE id = ?", (shoe_id,))
+    conn.commit()
+    return {"message": f"Shoe removed from inventory!"}
