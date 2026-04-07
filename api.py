@@ -1,15 +1,26 @@
 import sqlite3
 from typing import List
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
 
-# 1. Connect to a local database file (Python will create 'shoes.db' automatically!)
+# --- 1. CORS SECURITY ---
+# This tells your browser it's safe to let your HTML frontend read this data
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- 2. DATABASE SETUP ---
+# Connect to the local SQLite file and create the table if it's missing
 conn = sqlite3.connect("shoes.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# 2. Create our database table if it doesn't exist yet
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS inventory (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,25 +32,26 @@ cursor.execute("""
 """)
 conn.commit()
 
-# Our Shoe Blueprint
+# --- 3. DATA BLUEPRINT ---
 class Shoe(BaseModel):
     brand: str
     model: str
     price: float
     in_stock: bool
 
+# --- 4. API ROUTES ---
+
 @app.get("/")
 def home():
     return {"message": "Welcome to the Persistent Nike API!"}
 
-# 3. GET Route: Read from the Database
 @app.get("/inventory")
 def get_inventory():
-    # Ask the database for all the shoes
+    # Read all shoes from the database
     cursor.execute("SELECT brand, model, price, in_stock FROM inventory")
     rows = cursor.fetchall()
     
-    # Format the raw database rows into a nice, readable list
+    # Format them into a clean list
     inventory_list = []
     for row in rows:
         inventory_list.append({
@@ -50,15 +62,13 @@ def get_inventory():
         })
     return inventory_list
 
-# 4. POST Route: Write to the Database
 @app.post("/inventory")
 def add_shoes(new_shoes: List[Shoe]):
-    # Loop through the list of shoes and insert them into the database one by one
+    # Save new shoes to the database permanently
     for shoe in new_shoes:
         cursor.execute(
             "INSERT INTO inventory (brand, model, price, in_stock) VALUES (?, ?, ?, ?)",
             (shoe.brand, shoe.model, shoe.price, shoe.in_stock)
         )
-    # Save the changes
     conn.commit()
     return {"message": f"Success! Saved {len(new_shoes)} shoes to the database permanently."}
